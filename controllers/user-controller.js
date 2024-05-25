@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/user-model");
+const { getSignedUrlFromKey, uploadFile, deleteFile } = require("../config/s3");
 
 const signup = async (req, res) => {
   try {
@@ -132,6 +133,17 @@ const updateUser = async (req, res) => {
       req.body.password = hashedPassword;
     }
 
+    //if user is trying to update the email, check if the email already exists
+    if (req.body.email) {
+      const existingUser = await User.findOne({ email: req.body.email });
+      if (
+        existingUser &&
+        existingUser._id.toString() !== req.user.id.toString()
+      ) {
+        return res.status(400).send({ error: "Email already exists" });
+      }
+    }
+
     // update user
     await User.findByIdAndUpdate(req.user.id, req.body);
 
@@ -178,13 +190,30 @@ const uploadProfilePicture = async (req, res) => {
       return res.status(400).send({ error: "User not found" });
     }
 
-    // update user profile picture
-    await User.findByIdAndUpdate(req.user.id, {
-      profilePicture: "/public/" + req.file.filename,
-    });
+    if (req.file) {
+      //first we need to delete the existing profile picture
+      if (user.profilePicture && user.profilePicture !== "") {
+        await deleteFile(user.profilePicture);
+      }
+
+      //upload the new profile picture
+      const response = await uploadFile(req.file, "profile-pictures");
+
+      //update the user profile picture
+      await User.findByIdAndUpdate(req.user.id, {
+        profilePicture: response.fileName,
+      });
+    }
 
     // find updated user
     const updatedUser = await User.findById(req.user.id).select("-password");
+
+    //we need to return the updated user with the profile picture
+    if (updatedUser.profilePicture) {
+      updatedUser.profilePicture = await getSignedUrlFromKey(
+        updatedUser.profilePicture
+      );
+    }
 
     // return updated user
     return res.status(200).json({
