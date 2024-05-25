@@ -45,6 +45,17 @@ const roomSchema = new mongoose.Schema({
   },
 });
 
+const faqSchema = new mongoose.Schema({
+  question: {
+    type: String,
+    required: true,
+  },
+  answer: {
+    type: String,
+    required: true,
+  },
+});
+
 // Create a schema for properties
 const propertySchema = new mongoose.Schema(
   {
@@ -86,6 +97,14 @@ const propertySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    faqs: {
+      type: [faqSchema],
+      required: true,
+    },
+    instantBooking: {
+      type: Boolean,
+      required: true,
+    },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -94,6 +113,11 @@ const propertySchema = new mongoose.Schema(
     rooms: {
       type: [roomSchema],
       required: true,
+    },
+    status: {
+      type: String,
+      enum: ["Active", "Draft", "Pending", "Denied", "Paused"],
+      default: "Draft",
     },
   },
   { timestamps: true }
