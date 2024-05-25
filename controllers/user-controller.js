@@ -4,6 +4,16 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user-model");
 const { getSignedUrlFromKey, uploadFile, deleteFile } = require("../config/s3");
 
+const getUserWithPresignedProfilePicture = async (id) => {
+  const user = await User.findById(id).select("-password");
+
+  if (user.profilePicture) {
+    user.profilePicture = await getSignedUrlFromKey(user.profilePicture);
+  }
+
+  return user;
+};
+
 const signup = async (req, res) => {
   try {
     // Get user input
@@ -84,7 +94,7 @@ const login = async (req, res) => {
       );
 
       return res.status(200).json({
-        user,
+        user: await getUserWithPresignedProfilePicture(user._id),
         token,
         message: "Login successful",
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -108,7 +118,9 @@ const getUser = async (req, res) => {
       return res.status(400).send({ error: "User not found" });
     }
     // return user
-    return res.status(200).json(user);
+    return res
+      .status(200)
+      .json(await getUserWithPresignedProfilePicture(req.user.id));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -147,12 +159,9 @@ const updateUser = async (req, res) => {
     // update user
     await User.findByIdAndUpdate(req.user.id, req.body);
 
-    // find updated user
-    const updatedUser = await User.findById(req.user.id).select("-password");
-
     // return updated user
     return res.status(200).json({
-      user: updatedUser,
+      user: await getUserWithPresignedProfilePicture(req.user.id),
       message: "User updated successfully",
     });
   } catch (error) {
@@ -168,6 +177,15 @@ const getAllUsers = async (req, res) => {
     // if users does not exist return error
     if (!users) {
       return res.status(400).send({ error: "Users not found" });
+    }
+
+    // loop through all users and get presigned url for profile picture
+    for (let i = 0; i < users.length; i++) {
+      if (users[i].profilePicture) {
+        users[i].profilePicture = await getSignedUrlFromKey(
+          users[i].profilePicture
+        );
+      }
     }
 
     // return users
@@ -205,19 +223,9 @@ const uploadProfilePicture = async (req, res) => {
       });
     }
 
-    // find updated user
-    const updatedUser = await User.findById(req.user.id).select("-password");
-
-    //we need to return the updated user with the profile picture
-    if (updatedUser.profilePicture) {
-      updatedUser.profilePicture = await getSignedUrlFromKey(
-        updatedUser.profilePicture
-      );
-    }
-
     // return updated user
     return res.status(200).json({
-      user: updatedUser,
+      user: await getUserWithPresignedProfilePicture(req.user.id),
       message: "Profile picture updated successfully",
     });
   } catch (error) {
