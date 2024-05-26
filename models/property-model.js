@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const roomSchema = new mongoose.Schema({
   category: {
     type: String,
-    enum: ["Private", "Shared", "Entire Place"],
+    enum: ["private", "shared", "entire-place"],
     required: true,
   },
   availableRooms: {
@@ -24,11 +24,9 @@ const roomSchema = new mongoose.Schema({
   },
   roomSize: {
     type: Number,
-    required: true,
   },
   roomSizeUnit: {
     type: String,
-    required: true,
   },
   rentAmount: {
     type: Number,
@@ -36,7 +34,7 @@ const roomSchema = new mongoose.Schema({
   },
   rentAmountUnit: {
     type: String,
-    enum: ["Per Year", "Per Month", "Per Week", "Per Day"],
+    enum: ["per-day", "per-week", "per-month", "per-year"],
     required: true,
   },
   images: {
@@ -95,15 +93,15 @@ const propertySchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: true,
+      default: "",
     },
     faqs: {
       type: [faqSchema],
-      required: true,
+      default: [],
     },
     instantBooking: {
       type: Boolean,
-      required: true,
+      default: false,
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
@@ -112,7 +110,7 @@ const propertySchema = new mongoose.Schema(
     },
     rooms: {
       type: [roomSchema],
-      required: true,
+      default: [],
     },
     status: {
       type: String,

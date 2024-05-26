@@ -5,6 +5,7 @@ const propertyController = require("../controllers/property-controller");
 const verifyAuth = require("../middleware/auth");
 const checkRole = require("../middleware/checkRole");
 const USER_ROLE = require("../types/user-role");
+const { upload } = require("../config/multer");
 
 //router for creating a property
 router.post(
@@ -34,6 +35,23 @@ router.delete(
   verifyAuth,
   checkRole(USER_ROLE.PROPERTY_OWNER),
   propertyController.deleteProperty
+);
+
+//router to add a room to a property
+router.post(
+  "/:id/room",
+  verifyAuth,
+  checkRole(USER_ROLE.PROPERTY_OWNER),
+  upload.array("images", 10),
+  propertyController.addRoom
+);
+
+//router to delete a room from a property
+router.delete(
+  "/:id/room/:roomId",
+  verifyAuth,
+  checkRole(USER_ROLE.PROPERTY_OWNER),
+  propertyController.deleteRoom
 );
 
 module.exports = router;

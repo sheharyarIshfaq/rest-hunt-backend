@@ -8,6 +8,7 @@ const cors = require("cors");
 
 // requiring the routes
 const userRoutes = require("./routes/user-routes");
+const propertyRoutes = require("./routes/property-routes");
 
 // getting the port from the environment variables
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // using the routes
 app.use("/api/users", userRoutes);
+app.use("/api/properties", propertyRoutes);
 
 // route to check if the api is running
 app.get("/", (req, res) => {
