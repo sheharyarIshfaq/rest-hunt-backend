@@ -22,12 +22,6 @@ const roomSchema = new mongoose.Schema({
     type: [String],
     required: true,
   },
-  roomSize: {
-    type: Number,
-  },
-  roomSizeUnit: {
-    type: String,
-  },
   rentAmount: {
     type: Number,
     required: true,
