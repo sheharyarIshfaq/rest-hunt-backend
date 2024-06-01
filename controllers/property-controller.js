@@ -300,6 +300,27 @@ const deleteProperty = async (req, res) => {
   }
 };
 
+const pauseProperty = async (req, res) => {
+  try {
+    //find the property by id
+    const property = await Property.findById(req.params.id);
+
+    //check if the property exists
+    if (!property) {
+      return res.status(404).send({ error: "Property not found" });
+    }
+
+    //update the status of the property to paused
+    property.status = "Paused";
+
+    await property.save();
+
+    res.status(200).json({ message: "Property paused successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
 module.exports = {
   createProperty,
   getProperties,
@@ -309,4 +330,5 @@ module.exports = {
   addRoom,
   deleteRoom,
   getOwnerProperties,
+  pauseProperty,
 };

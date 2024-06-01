@@ -29,6 +29,14 @@ router.get(
 //router for getting a property by id
 router.get("/:id", propertyController.getProperty);
 
+//router to pause a property by id
+router.put(
+  "/:id/pause",
+  verifyAuth,
+  checkRole(USER_ROLE.PROPERTY_OWNER),
+  propertyController.pauseProperty
+);
+
 //router for updating a property by id
 router.put(
   "/:id",
