@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const { uploadFile, deleteFile, getSignedUrlFromKey } = require("../config/s3");
 const Property = require("../models/property-model");
 const User = require("../models/user-model");
@@ -55,6 +56,83 @@ const createProperty = async (req, res) => {
 };
 
 const getProperties = async (req, res) => {};
+
+const getOwnerProperties = async (req, res) => {
+  try {
+    // Get the page number and items per page from query parameters
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 10; // Adjust the default as needed
+    const skip = (page - 1) * perPage;
+
+    //we will also pass status query parameter to filter properties based on status
+    const status = req.query.status || "all";
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).send({ error: "User not found" });
+    }
+
+    let properties = [];
+
+    if (status === "all") {
+      properties = await Property.find({ owner: user._id })
+        .skip(skip)
+        .limit(perPage)
+        .sort({ createdAt: -1 });
+    } else {
+      properties = await Property.find({ owner: user._id, status })
+        .skip(skip)
+        .limit(perPage)
+        .sort({ createdAt: -1 });
+    }
+
+    //each property has multiple rooms, each room has multiple images so we need to get signed url for each image
+    let updatedProperties = properties.map(async (property) => {
+      for (let i = 0; i < property?.rooms?.length; i++) {
+        //if there are no images for the room, skip
+        if (property.rooms[i]?.images?.length === 0) {
+          continue;
+        }
+        for (let j = 0; j < property.rooms[i].images.length; j++) {
+          property.rooms[i].images[j] = await getSignedUrlFromKey(
+            property.rooms[i].images[j]
+          );
+        }
+      }
+      return {
+        ...property._doc,
+        //just add an image for the property
+        image:
+          property?.rooms[0]?.images[0] ||
+          (await getSignedUrlFromKey("no-image-found.png")),
+      };
+    });
+
+    //wait for all promises to resolve
+
+    updatedProperties = await Promise.all(updatedProperties);
+
+    //get the total count of properties
+    let totalCount = 0;
+    if (status === "all") {
+      totalCount = await Property.countDocuments({ owner: user._id });
+    } else {
+      totalCount = await Property.countDocuments({ owner: user._id, status });
+    }
+
+    const totalPages = Math.ceil(totalCount / perPage);
+
+    res.status(200).json({
+      data: updatedProperties,
+      totalPages,
+      currentPage: page,
+      totalCount,
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 const getProperty = async (req, res) => {
   try {
@@ -230,4 +308,5 @@ module.exports = {
   deleteProperty,
   addRoom,
   deleteRoom,
+  getOwnerProperties,
 };

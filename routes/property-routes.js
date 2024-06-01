@@ -18,6 +18,14 @@ router.post(
 //router for getting all properties
 router.get("/", propertyController.getProperties);
 
+//router to get owner's properties
+router.get(
+  "/owner",
+  verifyAuth,
+  checkRole(USER_ROLE.PROPERTY_OWNER),
+  propertyController.getOwnerProperties
+);
+
 //router for getting a property by id
 router.get("/:id", propertyController.getProperty);
 
