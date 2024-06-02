@@ -2,6 +2,7 @@ const { default: mongoose } = require("mongoose");
 const { uploadFile, deleteFile, getSignedUrlFromKey } = require("../config/s3");
 const Property = require("../models/property-model");
 const User = require("../models/user-model");
+const RecentlyViewed = require("../models/recently-viewed-model");
 
 const createProperty = async (req, res) => {
   try {
@@ -195,8 +196,14 @@ const getProperty = async (req, res) => {
       return res.status(404).send({ error: "Property not found" });
     }
 
+    let leastPrice = Number.MAX_VALUE;
+    let leastPriceUnit;
     //get signed url for the images of rooms
     for (let i = 0; i < property.rooms.length; i++) {
+      if (property.rooms[i].rentAmount < leastPrice) {
+        leastPrice = property.rooms[i].rentAmount;
+        leastPriceUnit = property.rooms[i].rentAmountUnit;
+      }
       for (let j = 0; j < property.rooms[i].images.length; j++) {
         property.rooms[i].images[j] = await getSignedUrlFromKey(
           property.rooms[i].images[j]
@@ -211,10 +218,21 @@ const getProperty = async (req, res) => {
       );
     }
 
+    //get the number of times the property has been viewed in the last 24 hours
+    const noOfTimesViewed = await RecentlyViewed.countDocuments({
+      property: property._id,
+      createdAt: {
+        $gte: new Date(new Date() - 24 * 60 * 60 * 1000),
+      },
+    });
+
     res.status(200).json({
       data: {
         ...property._doc,
+        leastPrice: leastPriceUnit ? leastPrice : 0,
+        leastPriceUnit,
         reviews: [],
+        noOfTimesViewed,
       },
     });
   } catch (error) {
