@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/user-model");
 const { getSignedUrlFromKey, uploadFile, deleteFile } = require("../config/s3");
+const Favourite = require("../models/favourites-model");
+const Property = require("../models/property-model");
 
 const getUserWithPresignedProfilePicture = async (id) => {
   const user = await User.findById(id).select("-password");
@@ -233,6 +235,69 @@ const uploadProfilePicture = async (req, res) => {
   }
 };
 
+const getFavourites = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 4;
+
+    const skip = (page - 1) * perPage;
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const favourites = await Favourite.find({ user: user._id })
+      .skip(skip)
+      .limit(perPage)
+      .populate("property");
+
+    const properties = favourites.map((favourite) => favourite.property);
+
+    let updatedProperties = properties.map(async (property) => {
+      let leastPrice = Number.MAX_VALUE;
+      let leastPriceUnit;
+      for (let i = 0; i < property?.rooms?.length; i++) {
+        if (property.rooms[i]?.rentAmount < leastPrice) {
+          leastPrice = property.rooms[i]?.rentAmount;
+          leastPriceUnit = property.rooms[i]?.rentAmountUnit;
+        }
+        if (property?.rooms[i]?.images.length === 0) {
+          continue;
+        }
+        for (let j = 0; j < property?.rooms[i]?.images.length; j++) {
+          property.rooms[i].images[j] = await getSignedUrlFromKey(
+            property.rooms[i].images[j]
+          );
+        }
+      }
+      return {
+        ...property._doc,
+        image:
+          property?.rooms[0]?.images[0] ||
+          (await getSignedUrlFromKey("no-image-found.png")),
+        leastPrice: leastPriceUnit ? leastPrice : 0,
+        leastPriceUnit,
+      };
+    });
+
+    updatedProperties = await Promise.all(updatedProperties);
+
+    const totalCount = await Favourite.countDocuments({ user: user._id });
+    const totalPages = Math.ceil(totalCount / perPage);
+
+    return res.status(200).json({
+      properties: updatedProperties,
+      currentPage: page,
+      totalPages,
+      message: "Favourites fetched successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // export all the functions
 module.exports = {
   signup,
@@ -241,4 +306,5 @@ module.exports = {
   updateUser,
   getAllUsers,
   uploadProfilePicture,
+  getFavourites,
 };

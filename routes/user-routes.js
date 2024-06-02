@@ -21,6 +21,9 @@ router.put("/update", verifyAuth, userController.updateUser);
 // get all users
 router.get("/all", verifyAdmin, userController.getAllUsers);
 
+//router to get user favourite properties
+router.get("/favourites", verifyAuth, userController.getFavourites);
+
 //router to handle user profile picture upload
 router.post(
   "/profile-picture",
