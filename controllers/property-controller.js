@@ -55,7 +55,60 @@ const createProperty = async (req, res) => {
   }
 };
 
-const getProperties = async (req, res) => {};
+const getProperties = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 4;
+
+    const skip = (page - 1) * perPage;
+
+    const properties = await Property.find()
+      .skip(skip)
+      .limit(perPage)
+      .sort({ createdAt: -1 });
+
+    let updatedProperties = properties.map(async (property) => {
+      let leastPrice = Number.MAX_VALUE;
+      let leastPriceUnit;
+      for (let i = 0; i < property?.rooms?.length; i++) {
+        if (property.rooms[i]?.rentAmount < leastPrice) {
+          leastPrice = property.rooms[i]?.rentAmount;
+          leastPriceUnit = property.rooms[i]?.rentAmountUnit;
+        }
+        if (property?.rooms[i]?.images.length === 0) {
+          continue;
+        }
+        for (let j = 0; j < property?.rooms[i]?.images.length; j++) {
+          property.rooms[i].images[j] = await getSignedUrlFromKey(
+            property.rooms[i].images[j]
+          );
+        }
+      }
+      return {
+        ...property._doc,
+        image:
+          property?.rooms[0]?.images[0] ||
+          (await getSignedUrlFromKey("no-image-found.png")),
+        leastPrice: leastPriceUnit ? leastPrice : 0,
+        leastPriceUnit,
+      };
+    });
+
+    updatedProperties = await Promise.all(updatedProperties);
+
+    const totalCount = await Property.countDocuments();
+    const totalPages = Math.ceil(totalCount / perPage);
+
+    res.status(200).json({
+      data: updatedProperties,
+      totalPages,
+      currentPage: page,
+      totalCount,
+    });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
 
 const getOwnerProperties = async (req, res) => {
   try {
@@ -136,7 +189,7 @@ const getOwnerProperties = async (req, res) => {
 
 const getProperty = async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id);
+    const property = await Property.findById(req.params.id).populate("owner");
 
     if (!property) {
       return res.status(404).send({ error: "Property not found" });
@@ -151,7 +204,19 @@ const getProperty = async (req, res) => {
       }
     }
 
-    res.status(200).json({ data: property });
+    //get signed url for the image of owner
+    if (property.owner.profilePicture) {
+      property.owner.profilePicture = await getSignedUrlFromKey(
+        property.owner.profilePicture
+      );
+    }
+
+    res.status(200).json({
+      data: {
+        ...property._doc,
+        reviews: [],
+      },
+    });
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
