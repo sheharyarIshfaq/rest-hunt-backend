@@ -9,7 +9,7 @@ const verifyAuth = require("../middleware/auth");
 router.post("/create", verifyAuth, reviewController.createReview);
 
 //router for getting review by booking id
-router.get("/booking/:id", reviewController.getReviewByBookingId);
+router.get("/booking/:id", verifyAuth, reviewController.getReviewByBookingId);
 
 //router for getting all reviews of a property
 router.get("/property/:propertyId", reviewController.getReviews);

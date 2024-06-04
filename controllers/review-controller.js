@@ -2,6 +2,7 @@ const Review = require("../models/review-model");
 const Property = require("../models/property-model");
 const Booking = require("../models/booking-model");
 const User = require("../models/user-model");
+const { getSignedUrlFromKey } = require("../config/s3");
 
 const createReview = async (req, res) => {
   try {
@@ -33,7 +34,18 @@ const createReview = async (req, res) => {
 
     await review.save();
 
-    res.status(201).json({ review });
+    const updatedReview = await Review.findById(review._id)
+      .populate("user")
+      .populate("property")
+      .populate("booking");
+
+    if (updatedReview.user.profilePicture) {
+      updatedReview.user.profilePicture = await getSignedUrlFromKey(
+        updatedReview.user.profilePicture
+      );
+    }
+
+    res.status(201).json({ review: updatedReview });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -58,12 +70,26 @@ const getReviewByBookingId = async (req, res) => {
   try {
     const bookingId = req.params.id;
 
-    const review = await Review.findOne({ booking: bookingId })
+    const reviews = await Review.find({ booking: bookingId })
       .populate("user")
       .populate("property")
       .populate("booking");
 
-    res.status(200).json({ review });
+    const updatedReviews = await Promise.all(
+      reviews.map(async (review) => {
+        if (review.user.profilePicture) {
+          review.user.profilePicture = await getSignedUrlFromKey(
+            review.user.profilePicture
+          );
+        }
+
+        return review;
+      })
+    );
+
+    res.status(200).json({
+      reviews: updatedReviews,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -73,7 +99,7 @@ const getReviewById = async (req, res) => {
   try {
     const reviewId = req.params.id;
 
-    const review = await Review.findById(review)
+    const review = await Review.findById(reviewId)
       .populate("user")
       .populate("property")
       .populate("booking");
