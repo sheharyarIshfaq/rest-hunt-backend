@@ -9,4 +9,7 @@ router.post("/add", messageController.addMessage);
 //router to get messages of a chat
 router.get("/:chatId", messageController.getMessages);
 
+//router to for adding a enquiry
+router.post("/enquiry", messageController.addEnquiry);
+
 module.exports = router;

@@ -11,6 +11,16 @@ const messageSchema = new mongoose.Schema(
     text: {
       type: String,
     },
+    enquiry: {
+      type: Boolean,
+      default: false,
+    },
+    propertyId: {
+      type: String,
+    },
+    roomId: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
