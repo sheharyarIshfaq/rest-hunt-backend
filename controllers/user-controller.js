@@ -6,6 +6,7 @@ const { getSignedUrlFromKey, uploadFile, deleteFile } = require("../config/s3");
 const Favourite = require("../models/favourites-model");
 const Property = require("../models/property-model");
 const Review = require("../models/review-model");
+const Booking = require("../models/booking-model");
 
 const getUserWithPresignedProfilePicture = async (id) => {
   const user = await User.findById(id).select("-password");
@@ -326,8 +327,37 @@ const getUserData = async (req, res) => {
 
     const requiredUser = await getUserWithPresignedProfilePicture(user._id);
 
+    const userBookings = await Booking.find({ user: user._id });
+
+    const ownerProperties = await Property.find({ owner: user._id });
+
+    const ownerPropertiesIds = ownerProperties.map((property) => property._id);
+
+    const userBookingsIds = userBookings.map((booking) => booking._id);
+
+    //we need to find the reviews of the user, when a booking is done, a review is added by the user and the owner
+    //so we need to find the reviews where the user is the owner
+    const reviews = await Review.find({
+      $or: [
+        { property: { $in: ownerPropertiesIds } },
+        { booking: { $in: userBookingsIds } },
+      ],
+      //we don't want to include the reviews where the user is the owner
+      user: { $ne: requiredUser._id },
+    });
+
+    const averageRating =
+      reviews.length > 0
+        ? reviews.reduce((acc, review) => acc + review.rating, 0) /
+          reviews.length
+        : 0;
+
     return res.status(200).json({
-      user: requiredUser,
+      user: {
+        ...requiredUser._doc,
+        reviewsCount: reviews.length,
+        averageRating,
+      },
       message: "User fetched successfully",
     });
   } catch (err) {
