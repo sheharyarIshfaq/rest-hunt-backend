@@ -7,18 +7,17 @@ const createWithdrawal = async (req, res) => {
     const { amount, payoutMethod, accountDetails } = req.body;
 
     if (!amount || !payoutMethod || !accountDetails) {
-      return res.status(400).json({ message: "All fields are required" });
+      throw new Error("Please provide all required fields");
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      throw new Error("User not found");
     }
 
     const earnings = await Earnings.find({
-      user: req.user._id,
-      status: "approved",
+      user: req.user.id,
     });
 
     const totalEarnings = earnings.reduce(
@@ -26,12 +25,25 @@ const createWithdrawal = async (req, res) => {
       0
     );
 
-    if (totalEarnings < amount) {
-      return res.status(400).json({ message: "Insufficient earnings" });
+    const withdrawals = await Withdrawal.find({
+      user: req.user.id,
+      //status is not equal to rejected
+      status: { $ne: "rejected" },
+    });
+
+    const withdrawnAmount = withdrawals.reduce(
+      (acc, withdrawal) => acc + withdrawal.amount,
+      0
+    );
+
+    const availableBalance = totalEarnings - withdrawnAmount;
+
+    if (availableBalance < amount) {
+      throw new Error("Insufficient earnings");
     }
 
     const withdrawal = new Withdrawal({
-      user: req.user._id,
+      user: req.user.id,
       amount,
       payoutMethod,
       accountDetails,
@@ -43,7 +55,7 @@ const createWithdrawal = async (req, res) => {
       .status(201)
       .json({ message: "Withdrawal request created successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -52,14 +64,14 @@ const getAllWithdrawals = async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      throw new Error("User not found");
     }
 
     const withdrawals = await Withdrawal.find({ user: user._id });
 
     res.status(200).json({ withdrawals });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -69,7 +81,7 @@ const getAllWithdrawalsForAdmin = async (req, res) => {
 
     res.status(200).json({ withdrawals });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -78,7 +90,7 @@ const approveWithdrawal = async (req, res) => {
     const withdrawal = await Withdrawal.findById(req.params.id);
 
     if (!withdrawal) {
-      return res.status(404).json({ message: "Withdrawal request not found" });
+      throw new Error("Withdrawal request not found");
     }
 
     withdrawal.status = "approved";
@@ -87,7 +99,7 @@ const approveWithdrawal = async (req, res) => {
 
     res.status(200).json({ message: "Withdrawal request approved" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -96,7 +108,7 @@ const rejectWithdrawal = async (req, res) => {
     const withdrawal = await Withdrawal.findById(req.params.id);
 
     if (!withdrawal) {
-      return res.status(404).json({ message: "Withdrawal request not found" });
+      throw new Error("Withdrawal request not found");
     }
 
     withdrawal.status = "rejected";
@@ -105,7 +117,7 @@ const rejectWithdrawal = async (req, res) => {
 
     res.status(200).json({ message: "Withdrawal request rejected" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 

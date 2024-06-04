@@ -53,7 +53,7 @@ const createBooking = async (req, res) => {
       amount: req.body.total,
       provider: req.body.provider,
       booking: booking._id,
-      description: `Booking for ${property.name} from ${req.body.moveIn} to ${req.body.moveOut}`,
+      description: `Booking for ${property.name}`,
     });
 
     await earning.save();
