@@ -1,6 +1,7 @@
 const Booking = require("../models/booking-model");
 const Property = require("../models/property-model");
 const User = require("../models/user-model");
+const Earning = require("../models/earning-model");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -44,6 +45,17 @@ const createBooking = async (req, res) => {
 
     //save the room
     await property.save();
+
+    //create an earning for the owner
+    const earning = new Earning({
+      user: property.owner,
+      amount: req.body.total,
+      provider: req.body.provider,
+      booking: booking._id,
+      description: `Booking for ${property.name} from ${req.body.moveIn} to ${req.body.moveOut}`,
+    });
+
+    await earning.save();
 
     await booking.save();
     res.status(201).json({ booking });
@@ -125,6 +137,20 @@ const updateBooking = async (req, res) => {
       return res.status(404).json({ error: "Booking not found" });
     }
 
+    if (req.body.status === "rejected") {
+      //add the room availability back to the property
+      const property = await Property.findById(booking.property);
+
+      const room = property.rooms.find((room) => room._id == booking.room);
+
+      room.availableRooms += 1;
+
+      await property.save();
+
+      //remove the earning for the owner
+      await Earning.deleteOne({ booking: booking._id });
+    }
+
     booking.status = req.body.status;
 
     await booking.save();
@@ -143,7 +169,19 @@ const deleteBooking = async (req, res) => {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    await booking.remove();
+    //add the room availability back to the property
+    const property = await Property.findById(booking.property);
+
+    const room = property.rooms.find((room) => room._id == booking.room);
+
+    room.availableRooms += 1;
+
+    await property.save();
+
+    //remove the earning for the owner
+    await Earning.deleteOne({ booking: booking._id });
+
+    await Booking.deleteOne({ _id: booking._id });
 
     res.status(200).json({ message: "Booking removed" });
   } catch (error) {
@@ -158,4 +196,5 @@ module.exports = {
   getBookingById,
   updateBooking,
   deleteBooking,
+  getOwnerBookings,
 };
