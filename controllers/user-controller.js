@@ -5,6 +5,7 @@ const User = require("../models/user-model");
 const { getSignedUrlFromKey, uploadFile, deleteFile } = require("../config/s3");
 const Favourite = require("../models/favourites-model");
 const Property = require("../models/property-model");
+const Review = require("../models/review-model");
 
 const getUserWithPresignedProfilePicture = async (id) => {
   const user = await User.findById(id).select("-password");
@@ -225,9 +226,26 @@ const uploadProfilePicture = async (req, res) => {
       });
     }
 
+    const updatedUser = await getUserWithPresignedProfilePicture(req.user.id);
+
+    //find the reviews of the user
+    const reviews = await Review.find({ user: req.user.id });
+
+    //calculate the average rating of the user
+    let averageRating = 0;
+    if (reviews.length > 0) {
+      averageRating =
+        reviews.reduce((acc, review) => acc + review.rating, 0) /
+        reviews.length;
+    }
+
     // return updated user
     return res.status(200).json({
-      user: await getUserWithPresignedProfilePicture(req.user.id),
+      user: {
+        ...updatedUser,
+        averageRating,
+        reviewsCount: reviews.length,
+      },
       message: "Profile picture updated successfully",
     });
   } catch (error) {
