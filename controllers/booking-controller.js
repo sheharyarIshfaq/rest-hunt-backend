@@ -1,10 +1,50 @@
 const Booking = require("../models/booking-model");
+const Property = require("../models/property-model");
+const User = require("../models/user-model");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const createBooking = async (req, res) => {
   try {
-    const booking = new Booking({ ...req.body, user: req.user._id });
+    //we find the user by the id and then create a booking with the user id
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const property = await Property.findById(req.body.property);
+    if (!property) {
+      return res.status(404).json({ error: "Property not found" });
+    }
+
+    const room = property.rooms.find((room) => room._id == req.body.room);
+
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    //if the room is not available
+    if (room.availableRooms <= 0) {
+      return res.status(400).json({ error: "Room not available" });
+    }
+
+    const booking = new Booking({
+      user: user._id,
+      property: property._id,
+      room: room._id,
+      moveIn: req.body.moveIn,
+      moveOut: req.body.moveOut,
+      total: req.body.total,
+      provider: req.body.provider,
+    });
+
+    //minus the room availability from the property
+    room.availableRooms -= 1;
+
+    //save the room
+    await property.save();
+
     await booking.save();
     res.status(201).json({ booking });
   } catch (error) {

@@ -12,6 +12,7 @@ const propertyRoutes = require("./routes/property-routes");
 const favouriteRoutes = require("./routes/favourites-routes");
 const recentlyViewedRoutes = require("./routes/recently-viewed-routes");
 const bookingRoutes = require("./routes/booking-routes");
+const reviewRoutes = require("./routes/review-routes");
 
 // getting the port from the environment variables
 const PORT = process.env.PORT || 5000;
@@ -29,6 +30,7 @@ app.use("/api/properties", propertyRoutes);
 app.use("/api/favourites", favouriteRoutes);
 app.use("/api/recently-viewed", recentlyViewedRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // route to check if the api is running
 app.get("/", (req, res) => {

@@ -33,9 +33,12 @@ const bookingSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  payment: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Payment",
+  paymentId: {
+    type: String,
+  },
+  provider: {
+    type: String,
+    enum: ["stripe", "easypaisa", "jazzcash"],
   },
 });
 
