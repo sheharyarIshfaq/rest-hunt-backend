@@ -1,41 +1,46 @@
 const mongoose = require("mongoose");
 
-const roomSchema = new mongoose.Schema({
-  category: {
-    type: String,
-    enum: ["private", "shared", "entire-place"],
-    required: true,
+const roomSchema = new mongoose.Schema(
+  {
+    category: {
+      type: String,
+      enum: ["private", "shared", "entire-place"],
+      required: true,
+    },
+    availableRooms: {
+      type: Number,
+      required: true,
+    },
+    noOfBathrooms: {
+      type: Number,
+      required: true,
+    },
+    generalFacilities: {
+      type: [String],
+      required: true,
+    },
+    roomFacilities: {
+      type: [String],
+      required: true,
+    },
+    rentAmount: {
+      type: Number,
+      required: true,
+    },
+    rentAmountUnit: {
+      type: String,
+      enum: ["per-day", "per-week", "per-month", "per-year"],
+      required: true,
+    },
+    images: {
+      type: [String],
+      required: true,
+    },
   },
-  availableRooms: {
-    type: Number,
-    required: true,
-  },
-  noOfBathrooms: {
-    type: Number,
-    required: true,
-  },
-  generalFacilities: {
-    type: [String],
-    required: true,
-  },
-  roomFacilities: {
-    type: [String],
-    required: true,
-  },
-  rentAmount: {
-    type: Number,
-    required: true,
-  },
-  rentAmountUnit: {
-    type: String,
-    enum: ["per-day", "per-week", "per-month", "per-year"],
-    required: true,
-  },
-  images: {
-    type: [String],
-    required: true,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
 const faqSchema = new mongoose.Schema({
   question: {
