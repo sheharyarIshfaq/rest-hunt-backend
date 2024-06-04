@@ -17,6 +17,8 @@ const bookingRoutes = require("./routes/booking-routes");
 const reviewRoutes = require("./routes/review-routes");
 const earningRoutes = require("./routes/earning-routes");
 const withdrawalRoutes = require("./routes/withdrawal-routes");
+const chatRoutes = require("./routes/chat-routes");
+const messageRoutes = require("./routes/message-routes");
 
 const Earning = require("./models/earning-model");
 
@@ -39,6 +41,8 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/earnings", earningRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
+app.use("/api/chats", chatRoutes);
+app.use("/api/messages", messageRoutes);
 
 // route to check if the api is running
 app.get("/", (req, res) => {

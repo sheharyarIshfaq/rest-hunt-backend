@@ -32,4 +32,7 @@ router.post(
   userController.uploadProfilePicture
 );
 
+//router to get user data
+router.get("/:userId", verifyAuth, userController.getUserData);
+
 module.exports = router;
