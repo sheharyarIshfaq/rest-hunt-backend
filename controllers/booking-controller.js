@@ -262,15 +262,62 @@ const getOwnerBookings = async (req, res) => {
 
 const getBookingById = async (req, res) => {
   try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
     const booking = await Booking.findById(req.params.id)
       .populate("property")
-      .populate("room");
+      .populate("user");
 
+    //if the booking is not found
     if (!booking) {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    res.status(200).json({ booking });
+    const property = booking.property;
+
+    const room = property?.rooms?.find(
+      (room) => room._id.toString() === booking.room.toString()
+    );
+
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    let signedImages;
+
+    if (room.images.length > 0) {
+      signedImages = await Promise.all(
+        room.images.map(async (image) => {
+          return await getSignedUrlFromKey(image);
+        })
+      );
+    }
+
+    const fallBackImage = await getSignedUrlFromKey("no-image-found.png");
+
+    const owner = await User.findById(property.owner);
+
+    return res.status(200).json({
+      data: {
+        ...booking.toObject(),
+        room: {
+          ...room.toObject(),
+          images: signedImages || [fallBackImage],
+        },
+        user: {
+          ...booking.user.toObject(),
+          password: undefined,
+        },
+        owner: {
+          ...owner.toObject(),
+          password: undefined,
+        },
+      },
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
