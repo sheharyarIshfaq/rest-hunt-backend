@@ -60,11 +60,28 @@ const createProperty = async (req, res) => {
 const getProperties = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const perPage = parseInt(req.query.perPage) || 4;
+    const perPage = parseInt(req.query.perPage) || 10;
+    const search = req.query.search || "";
 
     const skip = (page - 1) * perPage;
 
-    const properties = await Property.find()
+    let query = {
+      status: "Active",
+      rooms: { $exists: true, $not: { $size: 0 } },
+    };
+
+    if (search.trim() !== "") {
+      query = {
+        ...query,
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { address: { $regex: search, $options: "i" } },
+          { nearbySiteName: { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    const properties = await Property.find(query)
       .skip(skip)
       .limit(perPage)
       .sort({ createdAt: -1 });
@@ -98,7 +115,7 @@ const getProperties = async (req, res) => {
 
     updatedProperties = await Promise.all(updatedProperties);
 
-    const totalCount = await Property.countDocuments();
+    const totalCount = await Property.countDocuments(query);
     const totalPages = Math.ceil(totalCount / perPage);
 
     res.status(200).json({
