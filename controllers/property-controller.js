@@ -3,6 +3,7 @@ const { uploadFile, deleteFile, getSignedUrlFromKey } = require("../config/s3");
 const Property = require("../models/property-model");
 const User = require("../models/user-model");
 const RecentlyViewed = require("../models/recently-viewed-model");
+const Review = require("../models/review-model");
 
 const createProperty = async (req, res) => {
   try {
@@ -226,12 +227,30 @@ const getProperty = async (req, res) => {
       },
     });
 
+    //find the reviews where the property id matches, and user should not be the owner of the property
+    const reviews = await Review.find({
+      property: property._id,
+      user: { $ne: property.owner._id },
+    }).populate("user");
+
+    let filteredReviews = reviews.map(async (review) => {
+      //if
+      if (review.user.profilePicture) {
+        review.user.profilePicture = await getSignedUrlFromKey(
+          review.user.profilePicture
+        );
+      }
+      return review;
+    });
+
+    const updatedReviews = await Promise.all(filteredReviews);
+
     res.status(200).json({
       data: {
         ...property._doc,
         leastPrice: leastPriceUnit ? leastPrice : 0,
         leastPriceUnit,
-        reviews: [],
+        reviews: updatedReviews,
         noOfTimesViewed,
       },
     });
