@@ -42,15 +42,11 @@ const addEnquiry = async (req, res) => {
     const receiver = await User.findById(receiverId);
 
     if (!sender || !receiver) {
-      return res.status(400).json({
-        message: "Sender or receiver not found",
-      });
+      throw new Error("Sender or receiver not found");
     }
 
     if (senderId === receiverId) {
-      return res.status(400).json({
-        message: "You can't send enquiry to yourself",
-      });
+      throw new Error("You can't send an enquiry to yourself");
     }
 
     //we check if the chat already exists
