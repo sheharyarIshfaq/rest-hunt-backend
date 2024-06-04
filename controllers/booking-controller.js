@@ -2,6 +2,7 @@ const Booking = require("../models/booking-model");
 const Property = require("../models/property-model");
 const User = require("../models/user-model");
 const Earning = require("../models/earning-model");
+const { getSignedUrlFromKey } = require("../config/s3");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
@@ -79,17 +80,91 @@ const createPayment = async (req, res) => {
 
 const getBookings = async (req, res) => {
   try {
+    // Get the page number and items per page from query parameters
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 10; // Adjust the default as needed
+    const skip = (page - 1) * perPage;
+
+    const status = req.query.status || "previous";
+
     const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const bookings = await Booking.find({ user: user._id })
-      .populate("property")
-      .populate("room");
+    let query = {
+      user: user._id,
+    };
 
-    res.status(200).json({ bookings });
+    if (status === "previous") {
+      //we need to find the bookings which have moveOut date less than today
+      query.moveOut = { $lt: new Date() };
+    } else {
+      //we need to find the bookings which have moveOut date greater than today
+      query.moveOut = { $gte: new Date() };
+    }
+
+    const bookings = await Booking.find({
+      ...query,
+    })
+      .skip(skip)
+      .limit(perPage)
+      .sort({ createdAt: -1 })
+      .populate("property");
+
+    const fallBackImage = await getSignedUrlFromKey("no-image-found.png");
+
+    //for each booking we need to add find the room from property and add it to the booking
+    const bookingsWithRooms = await Promise.all(
+      bookings.map(async (booking) => {
+        const property = booking.property;
+
+        const user = await User.findById(property.owner);
+
+        const room = property?.rooms?.find(
+          (room) => room._id.toString() === booking.room.toString()
+        );
+
+        if (!room) {
+          return booking;
+        }
+
+        let signedImages;
+
+        if (room.images.length > 0) {
+          signedImages = await Promise.all(
+            room.images.map(async (image) => {
+              return await getSignedUrlFromKey(image);
+            })
+          );
+        }
+        return {
+          ...booking.toObject(),
+          room: {
+            ...room.toObject(),
+            images: signedImages || [fallBackImage],
+          },
+          user: {
+            ...user.toObject(),
+            password: undefined,
+          },
+        };
+      })
+    );
+
+    const totalCount = await Booking.countDocuments({
+      ...query,
+    });
+
+    const totalPages = totalCount === 0 ? 1 : Math.ceil(totalCount / perPage);
+
+    res.status(200).json({
+      data: bookingsWithRooms,
+      totalPages,
+      currentPage: page,
+      total: totalCount,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -97,17 +172,89 @@ const getBookings = async (req, res) => {
 
 const getOwnerBookings = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).populate("properties");
+    // Get the page number and items per page from query parameters
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 10; // Adjust the default as needed
+    const skip = (page - 1) * perPage;
+    const status = req.query.status || "previous";
+
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const bookings = await Booking.find({ property: user.properties })
-      .populate("property")
-      .populate("room");
+    const userProperties = await Property.find({ owner: user._id });
 
-    res.status(200).json({ bookings });
+    const userPropertiesIds = userProperties.map((property) => property._id);
+
+    let query = {
+      property: { $in: userPropertiesIds },
+    };
+
+    if (status === "previous") {
+      //we need to find the bookings which have moveOut date less than today
+      query.moveOut = { $lt: new Date() };
+    } else {
+      //we need to find the bookings which have moveOut date greater than today
+      query.moveOut = { $gte: new Date() };
+    }
+
+    const bookings = await Booking.find({
+      ...query,
+    })
+      .skip(skip)
+      .limit(perPage)
+      .sort({ createdAt: -1 })
+      .populate("property")
+      .populate("user");
+
+    const fallBackImage = await getSignedUrlFromKey("no-image-found.png");
+
+    //for each booking we need to add find the room from property and add it to the booking
+    const bookingsWithRooms = await Promise.all(
+      bookings.map(async (booking) => {
+        const property = booking.property;
+
+        const room = property?.rooms?.find(
+          (room) => room._id.toString() === booking.room.toString()
+        );
+
+        if (!room) {
+          return booking;
+        }
+
+        let signedImages;
+
+        if (room.images.length > 0) {
+          signedImages = await Promise.all(
+            room.images.map(async (image) => {
+              return await getSignedUrlFromKey(image);
+            })
+          );
+        }
+        return {
+          ...booking.toObject(),
+          room: {
+            ...room.toObject(),
+            images: signedImages || [fallBackImage],
+          },
+        };
+      })
+    );
+
+    const totalCount = await Booking.countDocuments({
+      ...query,
+    });
+
+    const totalPages = totalCount === 0 ? 1 : Math.ceil(totalCount / perPage);
+
+    res.status(200).json({
+      data: bookingsWithRooms,
+      totalPages,
+      currentPage: page,
+      total: totalCount,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
