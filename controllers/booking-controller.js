@@ -67,6 +67,35 @@ const createPayment = async (req, res) => {
 
 const getBookings = async (req, res) => {
   try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const bookings = await Booking.find({ user: user._id })
+      .populate("property")
+      .populate("room");
+
+    res.status(200).json({ bookings });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const getOwnerBookings = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate("properties");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const bookings = await Booking.find({ property: user.properties })
+      .populate("property")
+      .populate("room");
+
+    res.status(200).json({ bookings });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -74,6 +103,15 @@ const getBookings = async (req, res) => {
 
 const getBookingById = async (req, res) => {
   try {
+    const booking = await Booking.findById(req.params.id)
+      .populate("property")
+      .populate("room");
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    res.status(200).json({ booking });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -81,6 +119,17 @@ const getBookingById = async (req, res) => {
 
 const updateBooking = async (req, res) => {
   try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    booking.status = req.body.status;
+
+    await booking.save();
+
+    res.status(200).json({ booking });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -88,6 +137,15 @@ const updateBooking = async (req, res) => {
 
 const deleteBooking = async (req, res) => {
   try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    await booking.remove();
+
+    res.status(200).json({ message: "Booking removed" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
