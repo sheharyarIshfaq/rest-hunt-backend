@@ -243,7 +243,7 @@ const uploadProfilePicture = async (req, res) => {
     // return updated user
     return res.status(200).json({
       user: {
-        ...updatedUser,
+        ...updatedUser._doc,
         averageRating,
         reviewsCount: reviews.length,
       },
@@ -344,7 +344,22 @@ const getUserData = async (req, res) => {
       ],
       //we don't want to include the reviews where the user is the owner
       user: { $ne: requiredUser._id },
+    }).populate("user");
+
+    const reviewsWithUser = reviews.map(async (review) => {
+      const userProfilePicture = await getSignedUrlFromKey(
+        review.user.profilePicture
+      );
+      return {
+        ...review._doc,
+        user: {
+          ...review.user._doc,
+          profilePicture: userProfilePicture,
+        },
+      };
     });
+
+    const updatedReviews = await Promise.all(reviewsWithUser);
 
     const averageRating =
       reviews.length > 0
@@ -357,6 +372,7 @@ const getUserData = async (req, res) => {
         ...requiredUser._doc,
         reviewsCount: reviews.length,
         averageRating,
+        reviews: updatedReviews,
       },
       message: "User fetched successfully",
     });

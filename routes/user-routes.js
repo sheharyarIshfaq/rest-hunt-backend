@@ -33,6 +33,6 @@ router.post(
 );
 
 //router to get user data
-router.get("/:userId", verifyAuth, userController.getUserData);
+router.get("/:userId", userController.getUserData);
 
 module.exports = router;
