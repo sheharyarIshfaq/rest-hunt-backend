@@ -35,4 +35,7 @@ router.post(
 //router to get user data
 router.get("/:userId", userController.getUserData);
 
+//router to delete a user
+router.delete("/:userId", verifyAdmin, userController.deleteUser);
+
 module.exports = router;

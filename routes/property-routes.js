@@ -6,6 +6,7 @@ const verifyAuth = require("../middleware/auth");
 const checkRole = require("../middleware/checkRole");
 const USER_ROLE = require("../types/user-role");
 const { upload } = require("../config/multer");
+const verifyAdmin = require("../middleware/admin-auth");
 
 //router for creating a property
 router.post(
@@ -18,6 +19,9 @@ router.post(
 //router for getting all properties
 router.get("/", propertyController.getProperties);
 
+//router for getting all properties for admin
+router.get("/all", verifyAdmin, propertyController.getAllProperties);
+
 //router to get owner's properties
 router.get(
   "/owner",
@@ -25,6 +29,12 @@ router.get(
   checkRole(USER_ROLE.PROPERTY_OWNER),
   propertyController.getOwnerProperties
 );
+
+//router to approve a property
+router.put("/approve/:id", verifyAdmin, propertyController.approveProperty);
+
+//router to reject a property
+router.put("/reject/:id", verifyAdmin, propertyController.rejectProperty);
 
 //router for getting a property by id
 router.get("/:id", propertyController.getProperty);

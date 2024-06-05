@@ -170,6 +170,54 @@ const getBookings = async (req, res) => {
   }
 };
 
+const getAllBookings = async (req, res) => {
+  try {
+    //without pagination
+    const bookings = await Booking.find({})
+      .populate("property")
+      .populate("user");
+
+    const fallBackImage = await getSignedUrlFromKey("no-image-found.png");
+
+    //for each booking we need to add find the room from property and add it to the booking
+    const bookingsWithRooms = await Promise.all(
+      bookings.map(async (booking) => {
+        const property = booking.property;
+
+        const rooms = property?.rooms?.find(
+          (room) => room._id.toString() === booking.room.toString()
+        );
+
+        if (!rooms) {
+          return booking;
+        }
+
+        let signedImages;
+
+        if (rooms?.images?.length > 0) {
+          signedImages = await Promise.all(
+            rooms.images.map(async (image) => {
+              return await getSignedUrlFromKey(image);
+            })
+          );
+        }
+
+        return {
+          ...booking.toObject(),
+          room: {
+            ...rooms.toObject(),
+            images: signedImages || [fallBackImage],
+          },
+        };
+      })
+    );
+
+    res.status(200).json({ bookings: bookingsWithRooms });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 const getOwnerBookings = async (req, res) => {
   try {
     // Get the page number and items per page from query parameters
@@ -383,6 +431,42 @@ const deleteBooking = async (req, res) => {
   }
 };
 
+const approveBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    booking.status = "approved";
+
+    await booking.save();
+
+    res.status(200).json({ booking });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const rejectBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    booking.status = "rejected";
+
+    await booking.save();
+
+    res.status(200).json({ booking });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   createPayment,
@@ -391,4 +475,7 @@ module.exports = {
   updateBooking,
   deleteBooking,
   getOwnerBookings,
+  getAllBookings,
+  approveBooking,
+  rejectBooking,
 };

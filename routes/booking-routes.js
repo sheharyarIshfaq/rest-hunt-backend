@@ -15,8 +15,17 @@ router.post("/create-payment", verifyAuth, bookingController.createPayment);
 //router for getting all bookings of a user
 router.get("/", verifyAuth, bookingController.getBookings);
 
+//router for getting all bookings for admin
+router.get("/all", verifyAdmin, bookingController.getAllBookings);
+
 //router for getting all bookings of an owner
 router.get("/owner", verifyAuth, bookingController.getOwnerBookings);
+
+//router to approve a booking
+router.put("/approve/:id", verifyAdmin, bookingController.approveBooking);
+
+//router to reject a booking
+router.put("/reject/:id", verifyAdmin, bookingController.rejectBooking);
 
 //router for getting a booking by id
 router.get("/:id", verifyAuth, bookingController.getBookingById);

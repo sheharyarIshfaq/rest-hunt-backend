@@ -440,6 +440,81 @@ const pauseProperty = async (req, res) => {
   }
 };
 
+const getAllProperties = async (req, res) => {
+  try {
+    const properties = await Property.find();
+
+    const updatedProperties = properties.map(async (property) => {
+      let leastPrice = Number.MAX_VALUE;
+      let leastPriceUnit;
+      for (let i = 0; i < property?.rooms?.length; i++) {
+        if (property?.rooms[i]?.rentAmount < leastPrice) {
+          leastPrice = property.rooms[i].rentAmount;
+          leastPriceUnit = property.rooms[i].rentAmountUnit;
+        }
+        if (property?.rooms[i]?.images?.length === 0) {
+          continue;
+        }
+        for (let j = 0; j < property?.rooms[i]?.images?.length; j++) {
+          property.rooms[i].images[j] = await getSignedUrlFromKey(
+            property.rooms[i].images[j]
+          );
+        }
+      }
+      return {
+        ...property._doc,
+        image:
+          property.rooms[0].images[0] ||
+          (await getSignedUrlFromKey("no-image-found.png")),
+        leastPrice: leastPriceUnit ? leastPrice : 0,
+        leastPriceUnit,
+      };
+    });
+
+    const updatedPropertiesData = await Promise.all(updatedProperties);
+
+    res.status(200).json({ properties: updatedPropertiesData });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
+const approveProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).send({ error: "Property not found" });
+    }
+
+    property.status = "Active";
+
+    await property.save();
+
+    res.status(200).json({ message: "Property approved successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
+const rejectProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).send({ error: "Property not found" });
+    }
+
+    property.status = "Denied";
+
+    await property.save();
+
+    res.status(200).json({ message: "Property rejected successfully" });
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+};
+
 module.exports = {
   createProperty,
   getProperties,
@@ -450,4 +525,7 @@ module.exports = {
   deleteRoom,
   getOwnerProperties,
   pauseProperty,
+  getAllProperties,
+  approveProperty,
+  rejectProperty,
 };

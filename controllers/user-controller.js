@@ -381,6 +381,22 @@ const getUserData = async (req, res) => {
   }
 };
 
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await User.findByIdAndDelete(req.params.userId);
+
+    return res.status(200).json({ message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // export all the functions
 module.exports = {
   signup,
@@ -391,4 +407,5 @@ module.exports = {
   uploadProfilePicture,
   getFavourites,
   getUserData,
+  deleteUser,
 };

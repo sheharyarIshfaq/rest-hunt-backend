@@ -77,7 +77,7 @@ const getAllWithdrawals = async (req, res) => {
 
 const getAllWithdrawalsForAdmin = async (req, res) => {
   try {
-    const withdrawals = await Withdrawal.find({});
+    const withdrawals = await Withdrawal.find({}).populate("user");
 
     res.status(200).json({ withdrawals });
   } catch (error) {
