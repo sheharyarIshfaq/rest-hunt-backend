@@ -464,7 +464,7 @@ const getAllProperties = async (req, res) => {
       return {
         ...property._doc,
         image:
-          property.rooms[0].images[0] ||
+          property?.rooms[0]?.images[0] ||
           (await getSignedUrlFromKey("no-image-found.png")),
         leastPrice: leastPriceUnit ? leastPrice : 0,
         leastPriceUnit,
@@ -475,6 +475,7 @@ const getAllProperties = async (req, res) => {
 
     res.status(200).json({ properties: updatedPropertiesData });
   } catch (error) {
+    console.log(error);
     res.status(400).send({ error: error.message });
   }
 };
